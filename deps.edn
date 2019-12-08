@@ -1,0 +1,15 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "RELEASE"}}
+ :aliases
+ {:dev {:extra-paths ["dev"]
+        :extra-deps {nrepl {:mvn/version "0.6.0"}
+                     cider/cider-nrepl {:mvn/version "0.21.2-SNAPSHOT"}
+                     refactor-nrepl {:mvn/version "2.4.0"}
+                     reply {:mvn/version "0.4.3"}}
+        :main-opts ["-m" "aoc.dev"]}
+  :test {:extra-paths ["test"]
+         :extra-deps {com.cognitect/test-runner
+                      {:git/url "https://github.com/cognitect-labs/test-runner.git"
+                       :sha "209b64504cb3bd3b99ecfec7937b358a879f55c1"}
+                      org.clojure/test.check {:mvn/version "RELEASE"}}
+         :main-opts ["-m" "cognitect.test-runner"]}}}
