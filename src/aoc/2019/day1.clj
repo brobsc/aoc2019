@@ -25,5 +25,8 @@
         total))))
 
 (defn part-2 []
-  (->>))
+  (->> (read-input 2019 1)
+       (map #(Integer/parseInt %))
+       (map calc-fuel')
+       (apply +)))
 
