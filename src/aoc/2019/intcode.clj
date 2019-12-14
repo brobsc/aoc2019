@@ -32,12 +32,17 @@
               size (case op
                      (1 2) 4
                      (3 4) 2
-                     0)]
+                     0)
+              pc-plus (+ size start)]
           (recur
             (case op
               1 (assoc xs d (+ v1 v2))
               2 (assoc xs d (* v1 v2))
               3 (assoc xs s1 (read))
               4 (op4 xs v1)
+              (5 6) xs
               (throw (Exception. (str op "/" s1 "/" s2 "/" xs))))
-            (+ size start)))))))
+            (case op
+              5 (if (not= 0 v1) v2 pc-plus)
+              6 (if (zero? v1) v2 pc-plus)
+              pc-plus)))))))
