@@ -35,7 +35,6 @@
                      (3 4) 2
                      0)
               pc-plus (+ size start)]
-          (println start ":" op ":" v1 v2 d)
           (recur
             (case op
               1 (assoc xs d (+ v1 v2))
