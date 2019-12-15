@@ -46,11 +46,11 @@
               27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5])
 
 (defn run-sequence-loop [[p1 p2 p3 p4 p5] program]
-  (let [a-in (chan 2 (map str))
-        b-in (chan 2 (map str))
-        c-in (chan 2 (map str))
-        d-in (chan 2 (map str))
-        e-in (chan 2 (map str))
+  (let [a-in (chan 2)
+        b-in (chan 2)
+        c-in (chan 2)
+        d-in (chan 2)
+        e-in (chan 2)
         _ (do
             (>!! a-in p1)
             (>!! a-in 0)
@@ -63,13 +63,18 @@
         c (ic/run' c-in d-in program)
         d (ic/run' d-in e-in program)
         e (ic/run' e-in a-in program)]
-    (<!! a-in)))
-
-
-
+    a-in))
 
 (defn find-optimal' [program]
   (->> (range 5 10)
        (permutations)
-       (map (juxt identity #(run-sequence % program)))
+       (mapv (juxt identity #(run-sequence-loop % program)))
+       (map (juxt first (comp <!! second)))
        (apply max-key second)))
+
+(defn part-2 []
+  (let [program (mapv #(Integer/parseInt %)
+                  (-> (read-input 2019 7)
+                      (first)
+                      (string/split #",")))]
+    (find-optimal' program)))
