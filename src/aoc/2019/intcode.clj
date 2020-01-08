@@ -135,12 +135,12 @@
   (go-loop [xs xs
             start 0
             rbase 0]
-    (print-running)
+    #_(print-running)
     (let [op (->> start (nth xs) (extract-op))
           op-code (first op)]
       (if (= 99 op-code)
         (do
-          (print "       \r")
+          #_(print "       \r")
           (close! in)
           (close! out)
           xs)

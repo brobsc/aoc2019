@@ -8,3 +8,7 @@
     (slurp)
     (string/split #"\n")))
 
+(defn read-ic-input [y s]
+  (mapv #(BigInteger. %) (-> (read-input y s)
+                             (first)
+                             (string/split #","))))
