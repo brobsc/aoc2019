@@ -2,8 +2,11 @@
   (:require [aoc.core :refer [read-ic-input]]
             [aoc.2019.intcode :refer [run']]
             [clojure.core.async :refer [<! >!
+                                        offer!
                                         <!! >!!
-                                        chan
+                                        chan sliding-buffer
+                                        timeout
+                                        go
                                         go-loop]]))
 (def sample [104,1,
              104,2,
@@ -33,19 +36,23 @@
       (apply max-min))
     0))
 
-(defn move-cursor-up []
-  (print "\r\033[2K\033[F\r\033[2K\033[F\r"))
-
 (defn clear-screen []
-  (repeatedly 80 move-cursor-up))
+  #_(print (str (char 27) "[2J")) ; clear screen
+  (print (str (char 27) "[;H"))) ; move cursor to the top left corner of the screen
 
-(defn game [in]
-  (go-loop [state {}]
-    (if-let [x (<! in)]
-      (let [y (<! in)
-            tile (<! in)]
-        (recur (assoc state [x y] (get tile-ids tile))))
-     state)))
+(defn obj-pos [obj m]
+  (or (some (fn [[k v]]
+              (when (= v obj)
+                k))
+       m)
+    [0 0]))
+
+(defn score [m]
+  (or (some (fn [[k v]]
+             (when (= k [-1 0])
+                v))
+       m)
+    0))
 
 (defn render-screen [m]
   (clear-screen)
@@ -54,6 +61,9 @@
         maxy (mapply max second c)
         minx (mapply min first c)
         maxx (mapply max first c)]
+    (println)
+    (println "score:" (score m) "->" (obj-pos :ball m)
+             [maxx maxy])
     (doseq [y (range miny (inc maxy))
             x (range minx (inc maxx))]
       (let [display (if (= maxx x) println print)]
@@ -65,12 +75,35 @@
             :ball "o"
             " "))))))
 
+(defn direction [n]
+  (case n
+    -1 "<"
+     1 ">"
+     0 "."))
+
+(defn game [in out]
+  (go-loop [state {}]
+    (if-let [x (<! in)]
+      (let [y (<! in)
+            tile (<! in)
+            [ballx bally] (obj-pos :ball state)
+            [padx _] (obj-pos :paddle state)
+            dir-p (compare ballx padx)]
+        (do (render-screen state)
+            (>! out dir-p))
+        (recur (-> state
+                  (assoc [x y] (if (= [x y]
+                                      [-1 0])
+                                 tile
+                                 (get tile-ids tile))))))
+     (do (println)
+         state))))
+
 (defn start-game [xs]
   (let [ochan (chan 2)
-        ichan (chan)]
+        ichan (chan (sliding-buffer 2))]
     (run' xs ichan ochan)
-    (let [state (<!! (game ochan))]
-      (render-screen state)
+    (let [state (<!! (game ochan ichan))]
       state)))
 
 (defn part-1 []
@@ -78,3 +111,13 @@
        (start-game)
        (filter (fn [[k v]] (= :block v)))
        (count)))
+
+(defn part-2 []
+  (->> (read-ic-input 2019 13)
+       (#(assoc % 0 2))
+       (start-game)
+       (score)))
+
+(defn -main []
+  (clear-screen)
+  (println (part-2)))
