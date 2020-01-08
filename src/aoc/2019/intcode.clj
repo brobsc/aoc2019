@@ -5,20 +5,22 @@
                                         <!! >!!]]))
 
 (defn extract-op [i]
-  [(mod i 100)
-   (mod (int (/ i 100)) 10)
-   (mod (int (/ i 1000)) 10)
-   (mod (int (/ i 10000)) 10)])
+  (lazy-seq
+    (cons (rem i 100)
+      (->> (quot i 100)
+         ((fn get-digits [i]
+            (lazy-seq (cons (rem i 10) (get-digits (quot i 10))))))
+         (take 3)))))
 
-(defn get-value [i mode rbase xs]
-  (case mode
-    0 (get xs i 0)
-    1 i
-    2 (get xs (+ rbase i) 0)))
-
-(defn op4 [xs s]
-  (println s)
-  xs)
+(defn get-value [i mode dest? rbase xs]
+  (if dest?
+    (case mode
+      2 (+ i rbase)
+      i)
+    (case mode
+      0 (get xs i 0)
+      1 i
+      2 (get xs (+ rbase i) 0))))
 
 (defn safe-assoc [xs i value]
   (if (neg? i)
@@ -33,98 +35,113 @@
       0
       sum)))
 
-(defn get-literal-value [s mode rbase]
-  (case mode
-    2 (+ s rbase)
-    s))
+(defn add [s1 s2 ds xs]
+  (safe-assoc xs ds (+ s1 s2)))
+
+(defn mul [s1 s2 ds xs]
+  (safe-assoc xs ds (* s1 s2)))
+
+(defn rin
+  ([ds xs] (safe-assoc xs ds (read)))
+  ([ds xs in] (println "reading from" in) (go (safe-assoc xs ds (<! in)))))
+
+(defn put
+  ([s1 xs] (println s1) xs)
+  ([s1 xs out] (go (>! out s1) xs)))
+
+(defn jit [s1 ds]
+  (when (not= 0 s1)
+    ds))
+
+(defn jif [s1 ds]
+  (when (zero? s1)
+    ds))
+
+(defn slt [s1 s2 ds xs]
+  (safe-assoc xs ds (if (< s1 s2) 1 0)))
+
+(defn stq [s1 s2 ds xs]
+  (safe-assoc xs ds (if (= s1 s2) 1 0)))
+
+(defn rbs [s1 rbase]
+ (let [sum (+ rbase s1)]
+    (if (neg? sum)
+      0
+      sum)))
+
+(defn nop [& args]
+  nil)
+
+(def ops {1 {:fun add
+             :args [false false true]
+             :pcplus nop}
+          2 {:fun mul
+             :args [false false true]
+             :pcplus nop}
+          3 {:fun rin
+             :args [true]
+             :pcplus nop}
+          4 {:fun put
+             :args [false]
+             :pcplus nop}
+          5 {:fun nop
+             :args [false true]
+             :pcplus jit}
+          6 {:fun nop
+             :args [false true]
+             :pcplus jif}
+          7 {:fun slt
+             :args [false false true]}
+          8 {:fun stq
+             :args [false false true]}
+          9 {:fun nop
+             :args [false]
+             :rbase-fn rbs}
+          99 {:fun :hal
+              :args 0}})
+
+(defn extract-params [[op & rest] xs start rbase]
+  (mapv #(get-value %1 %2 %3 rbase xs)
+       (->> xs
+            (drop start)
+            (next)
+            (take (-> (get ops op) (:args) count)))
+       rest
+       (-> (get ops op) (:args))))
 
 (defn run [xs]
   (loop [xs xs
          start 0
          rbase 0]
-    (let [full-op (nth xs start)
-          [op s1-mode s2-mode d-mode] (extract-op full-op)]
-      (if (= 99 op)
+    (let [op (->> start (nth xs) (extract-op))
+          op-code (first op)]
+      (if (= 99 op-code)
         xs
-        (let [s1 (get xs (inc start))
-              s2 (get xs (+ start 2))
-              s3 (get xs (+ start 3))
-              v1 (get-value s1 s1-mode rbase xs)
-              v2 (get-value s2 s2-mode rbase xs)
-              v1' (get-literal-value s1 s1-mode rbase)
-              d (get-literal-value s3 d-mode rbase)
-              size (case op
-                     (1 2 7 8) 4
-                     (5 6) 3
-                     (3 4 9) 2
-                     0)
-              pc-plus (+ size start)]
+        (let [params (extract-params op xs start rbase)
+              {:keys [fun pcplus rbase-fn args]
+               :or {fun nop pcplus nop rbase-fn nop}} (get ops op-code)]
           (recur
-            (case op
-              1 (safe-assoc xs d (+ v1 v2))
-              2 (safe-assoc xs d (* v1 v2))
-              3 (safe-assoc xs v1' (read))
-              4 (op4 xs v1)
-              (5 6) xs
-              7 (safe-assoc xs d (if (< v1 v2) 1 0))
-              8 (safe-assoc xs d (if (= v1 v2) 1 0))
-              9 xs
-              (throw (Exception. (str op "/" s1 "/" s2 "/" xs))))
-            (case op
-              5 (if (not= 0 v1) v2 pc-plus)
-              6 (if (zero? v1) v2 pc-plus)
-              pc-plus)
-            (case op
-              9 (inc-rbase rbase v1)
-              rbase)))))))
-
-
-
-
-
-;;;
-
-(defn op4' [xs s out]
-  (go (>! out s))
-  xs)
-
+            (or (apply fun (conj params xs)) xs)
+            (or (apply pcplus params) (+ start 1 (count args)))
+            (or (apply rbase-fn (conj params rbase)) rbase)))))))
 
 (defn run' [xs in out]
   (go-loop [xs xs
             start 0
             rbase 0]
-    (let [full-op (nth xs start)
-          [op s1-mode s2-mode d-mode] (extract-op full-op)]
-      (if (= 99 op)
+    (let [op (->> start (nth xs) (extract-op))
+          op-code (first op)]
+      (if (= 99 op-code)
         xs
-        (let [s1 (get xs (inc start))
-              s2 (get xs (+ start 2))
-              s3 (get xs (+ start 3))
-              v1 (get-value s1 s1-mode rbase xs)
-              v2 (get-value s2 s2-mode rbase xs)
-              v1' (get-literal-value s1 s1-mode rbase)
-              d (get-literal-value s3 d-mode rbase)
-              size (case op
-                     (1 2 7 8) 4
-                     (5 6) 3
-                     (3 4 9) 2
-                     0)
-              pc-plus (+ size start)]
+        (let [params (extract-params op xs start rbase)
+              {:keys [fun pcplus rbase-fn args]
+               :or {fun nop pcplus nop rbase-fn nop}} (get ops op-code)]
           (recur
-            (case op
-              1 (safe-assoc xs d (+ v1 v2))
-              2 (safe-assoc xs d (* v1 v2))
-              3 (safe-assoc xs v1' (<! in))
-              4 (op4' xs v1 out)
-              (5 6) xs
-              7 (safe-assoc xs d (if (< v1 v2) 1 0))
-              8 (safe-assoc xs d (if (= v1 v2) 1 0))
-              9 xs
-              (throw (Exception. (str op "/" s1 "/" s2 "/" xs))))
-            (case op
-              5 (if (not= 0 v1) v2 pc-plus)
-              6 (if (zero? v1) v2 pc-plus)
-              pc-plus)
-            (case op
-              9 (inc-rbase rbase v1)
-              rbase)))))))
+            (or (<! (apply fun (if (some #{op-code} [3 4])
+                                 (conj params xs (if (= op-code 3)
+                                                   in
+                                                   out))
+                                 (conj params xs))))
+                xs)
+            (or (apply pcplus params) (+ start 1 (count args)))
+            (or (apply rbase-fn (conj params rbase)) rbase)))))))

@@ -1,5 +1,7 @@
 (ns user
-  (:require [hashp.core]))
+  (:require [hashp.core]
+            [clojure.pprint :refer [pprint]])
+  (:use [clojure.repl]))
 
 (defn trace! [v]
   (let [m    (meta v)
