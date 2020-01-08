@@ -2,7 +2,7 @@
   (:require [aoc.core :refer [read-input]]
             [clojure.string :as string]
             [clojure.core.async :refer [go go-loop <! >! chan
-                                        <!! >!!]]))
+                                        close!  <!! >!!]]))
 
 (defn extract-op [i]
   (lazy-seq
@@ -128,19 +128,22 @@
 (def running-chars (atom ["/" "-" "\\" "|"]))
 
 (defn print-running []
-  (print (first @running-chars) "\r")
+  (print "[" (first @running-chars) "]" "\r")
   (reset! running-chars (take 4 (next (cycle @running-chars)))))
 
 (defn run' [xs in out]
   (go-loop [xs xs
             start 0
             rbase 0]
-    #_(print-running)
-    (println "xs" (count xs) "start" start)
+    (print-running)
     (let [op (->> start (nth xs) (extract-op))
           op-code (first op)]
       (if (= 99 op-code)
-        xs
+        (do
+          (print "       \r")
+          (close! in)
+          (close! out)
+          xs)
         (let [params (extract-params op xs start rbase)
               {:keys [fun pcplus rbase-fn args]
                :or {fun nop pcplus nop rbase-fn nop}} (get ops op-code)

@@ -45,18 +45,20 @@
         a-chan (chan)]
     (paint-bot ic-chan pb-chan a-chan initial)
     (ic/run' xs pb-chan ic-chan)
-    (read)
-    (close! ic-chan)
-    (close! pb-chan)
     (<!! a-chan)))
 
 (defn render-hull [m]
-  (doseq [y (range 79 -80 -1)
-          x (range -79 80)]
-    (let [display (if (= 79 x) println print)]
-      (if (= :black (get m [x y] :black))
-        (display ". ")
-        (display "# ")))))
+  (let [c (map (fn [[k _]] k) m)
+        miny (->> c (map second) (apply min))
+        maxy (->> c (map second) (apply max))
+        minx (->> c (map first) (apply min))
+        maxx (->> c (map first) (apply max))]
+    (doseq [y (range maxy (dec miny) -1)
+            x (range minx (inc maxx))]
+      (let [display (if (= maxx x) println print)]
+        (if (= :black (get m [x y] :black))
+          (display " ")
+          (display "█"))))))
 
 (defn part-1 []
   (count (run-paint-bot (mapv #(BigInteger. %) (-> (read-input 2019 11)
