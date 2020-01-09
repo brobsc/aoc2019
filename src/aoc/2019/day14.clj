@@ -103,22 +103,47 @@
                      inputs))
             (update-in [1 ele] (fnil + 0) excess))))))
 
-(defn produce-fuel [s]
+(defn produce-fuel [qt s]
   (let [production (->> s
                     recipes
-                    (partial produce :FUEL 1))]
+                    (partial produce :FUEL qt))]
     (production [{} {}])))
 
-(defn full-produce [upto s]
+(defn iterate-full-produce [upto s]
   (let [production (->> s
                     recipes
                     (partial produce :FUEL 1))]
-    (dec (count (take-while (fn [[o _]] (< (:ORE o) upto))
-                       (iterate production [{:ORE 0} {}]))))))
+    (->> [{:ORE 0} {}]
+        (iterate production)
+        (take-while (fn [[o _]] (< (:ORE o) upto)))
+        count
+        dec)))
+
+(defn ore [r]
+  (->> r
+       first
+       :ORE))
+
+(defn ore-need [qt-fuel s]
+  (->> (produce-fuel qt-fuel s)
+       (ore)))
+
+(defn full-produce [upto s]
+  (loop [lower-bound (quot upto (ore-need 1 s))
+         upper-bound (* 100 lower-bound)]
+    (let [ore-need-low (ore-need lower-bound s)
+          ore-need-up (ore-need upper-bound s)
+          middle (quot (+ lower-bound upper-bound) 2)
+          ore-need-mid (ore-need middle s)]
+      (cond
+        (or (= middle lower-bound) (= upper-bound middle)) middle
+        (< upto ore-need-mid) (recur lower-bound middle)
+        (< ore-need-mid upto) (recur middle upper-bound)
+        true middle))))
 
 (defn solve [s]
   (->> s
-       (produce-fuel)
+       (produce-fuel 1)
        (first)
        (:ORE)))
 
