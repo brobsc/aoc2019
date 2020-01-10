@@ -1,53 +1,34 @@
 (ns aoc.2019.day2
-  (:require [aoc.core :refer [read-input]]
-            [clojure.string :as string]))
+  (:require [aoc.core :refer [read-ic-input]]
+            [aoc.2019.intcode :refer [run]]
+            [clojure.test :refer [testing is]]))
 
-(defn input []
-  (vec (map #(Integer/parseInt %)
-        (-> (read-input 2019 2)
-            (first)
-            (string/split #",")))))
+(def input
+  (read-ic-input 2019 2))
 
-(defn run [xs]
-  (loop [xs xs
-         start 0]
-    (let [op (nth xs start)]
-      (if (= 99 op)
-        xs
-        (let [s1 (nth xs (inc start))
-              s2 (nth xs (+ start 2))
-              d (nth xs (+ start 3))
-              v1 (nth xs s1)
-              v2 (nth xs s2)]
-          (recur
-            (case op
-              1 (assoc xs d (+ v1 v2))
-              2 (assoc xs d (* v1 v2)))
-            (+ 4 start)))))))
-
-(defn part-1' [x y]
-  (-> (input)
+(defn change-and-run [mem x y]
+  (-> mem
       (assoc 1 x)
       (assoc 2 y)
       (run)
       (first)))
 
 (defn part-1 []
-  (part-1' 12 2))
-
-(defn combinations []
-  (for [x (range 100)
-        y (range 100)]
-    [x y]))
-
-(defn answer [x y]
-  (+ y (* 100 x)))
+  (change-and-run input 12 2))
 
 (defn part-2 []
-  (->> (combinations)
-       (map (juxt #(apply part-1' %) identity))
-       (filter (fn [[r _]] (= 19690720 r)))
-       (first)
-       (#(nth % 1))
-       (apply answer)))
+  (first
+    (for [x (range 100)
+          y (range 100)
+          :when (= 19690720 (change-and-run input x y))]
+      (+ y (* 100 x)))))
 
+(testing "Part-1"
+  (is (= (run [1,0,0,0,99]) [2,0,0,0,99]))
+  (is (= (run [2,3,0,3,99]) [2,3,0,6,99]))
+  (is (= (run [2,4,4,5,99,0]) [2,4,4,5,99,9801]))
+  (is (= (run [1,1,1,4,99,5,6,0,99]) [30,1,1,4,2,5,6,0,99]))
+  (is (= (part-1) 11590668)))
+
+(testing "Part-2"
+  (is (= (part-2) 2254)))
