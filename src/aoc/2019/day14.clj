@@ -131,15 +131,13 @@
 (defn full-produce [upto s]
   (loop [lower-bound (quot upto (ore-need 1 s))
          upper-bound (* 100 lower-bound)]
-    (let [ore-need-low (ore-need lower-bound s)
-          ore-need-up (ore-need upper-bound s)
-          middle (quot (+ lower-bound upper-bound) 2)
+    (let [middle (quot (+ lower-bound upper-bound) 2)
           ore-need-mid (ore-need middle s)]
       (cond
         (or (= middle lower-bound) (= upper-bound middle)) middle
         (< upto ore-need-mid) (recur lower-bound middle)
         (< ore-need-mid upto) (recur middle upper-bound)
-        true middle))))
+        :else middle))))
 
 (defn solve [s]
   (->> s

@@ -18,10 +18,9 @@
       \D (for [y' (range (dec y) (- y (inc qt)) -1)] [x y']))))
 
 (defn move-and-join [xs mv]
-  (let [r (move (last xs) mv)
-        final (last r)
-        n-ps (butlast r)]
-    (concat xs r)))
+  (->> mv
+      (move (last xs))
+      (concat xs)))
 
 (defn move-all [mvs]
   (reduce move-and-join

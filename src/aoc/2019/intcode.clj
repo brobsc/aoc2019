@@ -1,8 +1,6 @@
 (ns aoc.2019.intcode
-  (:require [aoc.core :refer [read-input]]
-            [clojure.string :as string]
-            [clojure.core.async :refer [go go-loop <! >! chan
-                                        close!  <!! >!!]]))
+  (:require [clojure.core.async :refer [go go-loop <! >!
+                                        close!]]))
 
 (defn extract-op [i]
   (lazy-seq
@@ -28,12 +26,6 @@
     (if (< (count xs) i)
       (safe-assoc (assoc xs (count xs) 0) i value)
       (assoc xs i value))))
-
-(defn inc-rbase [rbase value]
-  (let [sum (+ rbase value)]
-    (if (neg? sum)
-      0
-      sum)))
 
 (defn add [s1 s2 ds xs]
   (safe-assoc xs ds (+ s1 s2)))
@@ -69,7 +61,7 @@
       0
       sum)))
 
-(defn nop [& args]
+(defn nop [& _]
   nil)
 
 (def ops {1 {:fun add
